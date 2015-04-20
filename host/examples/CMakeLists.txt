@@ -35,12 +35,15 @@ SET(example_sources
     tx_waveforms.cpp
     txrx_loopback_to_file.cpp
     latency_test.cpp
+    cs_tx_from_file.cpp
     gpio.cpp
 )
 
 IF(ENABLE_OCTOCLOCK)
     LIST(APPEND example_sources test_clock_synch.cpp)
 ENDIF(ENABLE_OCTOCLOCK)
+
+ADD_DEFINITIONS(--std=c++0x)
 
 #for each source: build an executable and install
 FOREACH(example_source ${example_sources})
