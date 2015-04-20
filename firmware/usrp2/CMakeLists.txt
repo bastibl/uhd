@@ -66,6 +66,7 @@ ADD_DEFINITIONS(-DHAL_IO_USES_UART)
 INCLUDE_DIRECTORIES(
     ${CMAKE_SOURCE_DIR}/../../host/lib/usrp
     ${CMAKE_SOURCE_DIR}/lib
+    ${CMAKE_SOURCE_DIR}/carrier_sense
 )
 
 ########################################################################

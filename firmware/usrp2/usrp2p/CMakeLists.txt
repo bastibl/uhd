@@ -17,6 +17,7 @@
 
 ########################################################################
 INCLUDE(${CMAKE_SOURCE_DIR}/lib/CMakeLists.txt)
+INCLUDE(${CMAKE_SOURCE_DIR}/carrier_sense/CMakeLists.txt)
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
 ADD_DEFINITIONS(-DUSRP2P)
@@ -24,6 +25,7 @@ ADD_DEFINITIONS(-DUDP_UART_MASK=4) #GPS=UART2 streaming enabled
 
 ADD_LIBRARY(libusrp2pfw STATIC
     ${COMMON_SRCS}
+    ${CS_SRCS}
     spif.c
     spi_flash.c
     spi_flash_read.c

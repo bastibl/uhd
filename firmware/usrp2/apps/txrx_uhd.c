@@ -40,6 +40,9 @@
 #include <string.h>
 #include <stdbool.h>
 
+//carrier sense headers
+#include "carrier_sense.h"
+
 #ifdef BOOTLOADER
 #include <bootloader_utils.h>
 #endif
@@ -250,6 +253,24 @@ static void handle_udp_ctrl_packet(
         }
         ctrl_data_out.id = USRP2_CTRL_ID_OMG_GOT_REGISTER_SO_BAD_DUDE;
         break;
+    /*******************************************************************
+     * CSMA
+     ******************************************************************/
+    case USRP2_CTRL_ID_SET_CSMA_PARAMETER:{
+            switch(ctrl_data_in->data.csma_args.parameter) {
+            case USRP2_CSMA_PARAMETER_THRESHOLD:
+                cs_threshold->threshold = ntohl(ctrl_data_in->data.csma_args.parameter_value);
+                break;
+            case USRP2_CSMA_PARAMETER_SLOTTIME:
+                cs_slottime->slottime = ntohl(ctrl_data_in->data.csma_args.parameter_value);
+                break;
+            case USRP2_CSMA_PARAMETER_ENABLE:
+                break;
+            }
+            ctrl_data_out.id = USRP2_CTRL_ID_GET_CSMA_PARAMETER;
+            ctrl_data_out.data.csma_args.parameter = ctrl_data_in->data.csma_args.parameter;
+        }
+        break;
 
     /*******************************************************************
      * Echo test
@@ -264,6 +285,56 @@ static void handle_udp_ctrl_packet(
         ctrl_data_out.id = USRP2_CTRL_ID_HUH_WHAT;
     }
     send_udp_pkt(USRP2_UDP_CTRL_PORT, src, &ctrl_data_out, sizeof(ctrl_data_out));
+}
+
+static void handle_cs_packet(
+        struct socket_address src, struct socket_address dst,
+        unsigned char *payload, int payload_len
+){
+
+    csma_frame_t *iframe = (csma_frame_t*) payload;
+
+    // set response addr to where we got the packet from
+    udp_debug_set_addr(src);
+
+    switch((message_t)iframe->type)
+    {
+    case SET_SETTINGS:
+        if(iframe->payload_len != sizeof(csma_settings_t))
+        {
+            udp_debug_println("Failure: Data Corrupted!");
+            break;
+        }
+        cs_set_settings((csma_settings_t*)iframe->payload);
+        break;
+    case SET_READBACK:
+        if(iframe->payload_len != sizeof(uint8_t))
+        {
+            udp_debug_println("Failure: Data Corrupted!");
+            break;
+        }
+        cs_set_rb_addr((uint8_t)iframe->payload[0]);
+        break;
+    case GET_SETTINGS:
+        cs_get_settings();
+        break;
+    case GET_BACKOFF:
+        cs_get_backoff();
+        break;
+    case GET_STATUS:
+        cs_get_status();
+        break;
+    case GET_READBACK:
+        cs_get_readback();
+        break;
+    case GET_RSSI:
+        cs_get_rssi();
+        break;
+
+    default:
+        udp_debug_println("Command is unknown or obsolete!");
+        break;
+    }
 }
 
 #include <net/padded_eth_hdr.h>
@@ -343,6 +414,7 @@ main(void)
   register_udp_listener(USRP2_UDP_RX_DSP1_PORT, handle_udp_data_packet);
   register_udp_listener(USRP2_UDP_TX_DSP0_PORT, handle_udp_data_packet);
   register_udp_listener(USRP2_UDP_FIFO_CRTL_PORT, handle_udp_data_packet);
+  register_udp_listener(USRP2_UDP_CSMA_PORT, handle_cs_packet);
   
 #ifdef USRP2P
   register_udp_listener(USRP2_UDP_UPDATE_PORT, handle_udp_fw_update_packet);
@@ -370,15 +442,15 @@ main(void)
 
     pic_interrupt_handler();
     /*
-    int pending = pic_regs->pending;		// poll for under or overrun
+    int pending = pic_regs->pending;        // poll for under or overrun
 
     if (pending & PIC_UNDERRUN_INT){
-      pic_regs->pending = PIC_UNDERRUN_INT;	// clear interrupt
+      pic_regs->pending = PIC_UNDERRUN_INT; // clear interrupt
       putchar('U');
     }
 
     if (pending & PIC_OVERRUN_INT){
-      pic_regs->pending = PIC_OVERRUN_INT;	// clear interrupt
+      pic_regs->pending = PIC_OVERRUN_INT;  // clear interrupt
       putchar('O');
     }
     */

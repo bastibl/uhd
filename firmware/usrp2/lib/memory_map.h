@@ -113,13 +113,20 @@ typedef struct {
 
 typedef struct {
   volatile uint32_t spi;
-  volatile uint32_t _padding[7];
+  volatile uint32_t _padding[2];
+  volatile uint32_t cs_avg_rssi;
+  volatile uint32_t cs_rssi;
+  volatile uint32_t cs_settings_rb;
+  volatile uint32_t cs_readback;
+  volatile uint32_t cs_status;
   volatile uint32_t status;
   volatile uint32_t _unused;
   volatile uint32_t time64_secs_rb;
   volatile uint32_t time64_ticks_rb;
   volatile uint32_t compat_num;
   volatile uint32_t irqs;
+  volatile uint32_t vita_pps_h;
+  volatile uint32_t vita_pps_l;
 } router_status_t;
 
 #define SPI_READY_IRQ (1 << 12)
@@ -210,11 +217,36 @@ typedef struct {
 #define SR_TX_CTRL  144   // 6
 #define SR_TX_DSP   160   // 5
 
+// Carrier Sense Regs
+#define SR_CS_SET     165  // 1
+#define SR_CS_THRESH  166  // 1
+#define SR_CS_SLOTT   167  // 1
+
 #define SR_UDP_SM   192   // 64
 
 #define	_SR_ADDR(sr) (SETTING_REGS_BASE + (sr) * sizeof(uint32_t))
 
 #define SR_ADDR_BLDRDONE _SR_ADDR(5)
+
+// --- cs controll regs ---
+
+typedef struct {
+	uint32_t settings;
+}cs_set_t;
+
+#define cs_settings ((cs_set_t *) _SR_ADDR(SR_CS_SET))
+
+typedef struct {
+	uint32_t threshold;
+}cs_threshold_t;
+
+#define cs_threshold ((cs_threshold_t *) _SR_ADDR(SR_CS_THRESH))
+
+typedef struct {
+	volatile uint32_t slottime;
+} cs_slottime_t;
+
+#define cs_slottime ((cs_slottime_t *) _SR_ADDR(SR_CS_SLOTT))
 
 // --- spi core control regs ---
 
