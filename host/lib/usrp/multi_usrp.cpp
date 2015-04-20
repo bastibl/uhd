@@ -15,6 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
+#include "usrp2/fw_common.h"
 #include <uhd/property_tree.hpp>
 #include <uhd/usrp/multi_usrp.hpp>
 #include <uhd/utils/msg.hpp>
@@ -25,6 +26,7 @@
 #include <uhd/usrp/dboard_id.hpp>
 #include <uhd/usrp/mboard_eeprom.hpp>
 #include <uhd/usrp/dboard_eeprom.hpp>
+#include <uhd/transport/udp_simple.hpp>
 #include <uhd/convert.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/thread.hpp>
@@ -33,6 +35,7 @@
 #include <boost/algorithm/string.hpp>
 #include <algorithm>
 #include <cmath>
+#include <netinet/in.h>
 
 using namespace uhd;
 using namespace uhd::usrp;
@@ -730,6 +733,24 @@ public:
         }
     }
 
+    void set_csma_slottime(const boost::uint32_t slottime, size_t mboard) {
+        if (_tree->exists(mb_root(mboard) / "csma/slottime")) {
+            _tree->access<boost::uint32_t>(mb_root(mboard) / "csma/slottime").set(slottime);
+            UHD_MSG(warning) << "setting slottime to " << slottime << std::endl;
+        } else {
+            UHD_MSG(warning) << "CSMA not implemented for this Daughterboard." << std::endl;
+        }
+    }
+
+    void set_csma_threshold(const boost::uint32_t threshold, size_t mboard) {
+        if (_tree->exists(mb_root(mboard) / "csma/threshold")) {
+            _tree->access<uint32_t>(mb_root(mboard) / "csma/threshold").set(threshold);
+            UHD_MSG(warning) << "setting threshold to " << threshold << std::endl;
+        } else {
+            UHD_MSG(warning) << "CSMA not implemented for this Daughterboard." << std::endl;
+        }
+    }
+
     /*******************************************************************
      * RX methods
      ******************************************************************/
@@ -1006,6 +1027,15 @@ public:
         }
         for (size_t c = 0; c < get_rx_num_channels(); c++){
             this->set_rx_iq_balance(offset, c);
+        }
+    }
+
+    void set_agc(bool agc, size_t chan){
+        if (_tree->exists(rx_rf_fe_root(chan) / "agc")) {
+            _tree->access<bool>(rx_rf_fe_root(chan) / "agc").set(agc);
+            UHD_MSG(warning) << "setting agc to " << agc << std::endl;
+        } else {
+            UHD_MSG(warning) << "AGC not implemented for this Daughterboard." << std::endl;
         }
     }
 

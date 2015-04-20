@@ -38,7 +38,9 @@ tx_metadata_t::tx_metadata_t(void):
     has_time_spec(false),
     time_spec(time_spec_t()),
     start_of_burst(false),
-    end_of_burst(false)
+    end_of_burst(false),
+    use_cs(false),
+    sifs(0)
 {
     /* NOP */
 }

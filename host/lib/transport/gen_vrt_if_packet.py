@@ -140,9 +140,9 @@ UHD_INLINE void __if_hdr_pack_$(suffix)(
         #end if
         ########## Class ID ##########
         #if $pred & $cid_p
-            packet_buff[$num_header_words] = 0; //not implemented
+            packet_buff[$num_header_words] = $(XE_MACRO)(boost::uint32_t(if_packet_info.cid >> 32));
             #set $num_header_words += 1
-            packet_buff[$num_header_words] = 0; //not implemented
+            packet_buff[$num_header_words] = $(XE_MACRO)(boost::uint32_t(if_packet_info.cid >> 0));
             #set $num_header_words += 1
             #set $flags |= (0x1 << 27);
         #end if

@@ -79,6 +79,12 @@ public:
     //! Construct a helpful warning message for images
     virtual std::string images_warn_help_message(void) = 0;
 
+    virtual uint32_t set_csma_slottime(const boost::uint32_t slottime) = 0;
+
+    virtual uint32_t set_csma_threshold(const boost::uint32_t threshold) = 0;
+
+    virtual bool set_csma_enable(bool enable) = 0;
+
     //motherboard eeprom map structure
     uhd::usrp::mboard_eeprom_t mb_eeprom;
 };

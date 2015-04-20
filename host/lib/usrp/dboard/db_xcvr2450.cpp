@@ -130,6 +130,7 @@ private:
     double set_rx_gain(double gain, const std::string &name);
     double set_rx_bandwidth(double bandwidth);
     double set_tx_bandwidth(double bandwidth);
+    bool set_agc(bool agc);
 
     void update_atr(void);
     void spi_reset(void);
@@ -262,6 +263,9 @@ xcvr2450::xcvr2450(ctor_args_t args) : xcvr_dboard_base(args){
         .set(2.0*_rx_bandwidth); //_rx_bandwidth in lowpass, convert to complex bandpass
     this->get_rx_subtree()->create<meta_range_t>("bandwidth/range")
         .set(xcvr_rx_bandwidth_range);
+    this->get_rx_subtree()->create<bool>("agc")
+        .coerce(boost::bind(&xcvr2450::set_agc, this, _1))
+        .set(false);
 
     ////////////////////////////////////////////////////////////////////
     // Register TX properties
@@ -681,4 +685,15 @@ double xcvr2450::set_tx_bandwidth(double bandwidth){
 
     //convert lowpass back to complex bandpass bandwidth
     return 2.0*_tx_bandwidth;
+}
+
+bool xcvr2450::set_agc(bool agc){
+    if(agc) {
+        _max2829_regs.rx_vga_gain_spi = max2829_regs_t::RX_VGA_GAIN_SPI_IO;
+    } else {
+        _max2829_regs.rx_vga_gain_spi = max2829_regs_t::RX_VGA_GAIN_SPI_SPI;
+    }
+    send_reg(0x8);
+    std::cout << boost::format("XCVR2450: setting AGC to %d") % agc <<std::endl;
+    return agc;
 }

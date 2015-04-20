@@ -46,6 +46,7 @@
 #include <string>
 #include <vector>
 
+
 namespace uhd{ namespace usrp{
 
 /*!
@@ -393,6 +394,10 @@ public:
      */
     virtual void set_user_register(const boost::uint8_t addr, const boost::uint32_t data, size_t mboard = ALL_MBOARDS) = 0;
 
+    virtual void set_csma_slottime(const boost::uint32_t slottime, size_t mboard = 0) = 0;
+
+    virtual void set_csma_threshold(const boost::uint32_t threshold, size_t mboard = 0) = 0;
+
     /*******************************************************************
      * RX methods
      ******************************************************************/
@@ -496,6 +501,8 @@ public:
     void set_rx_gain(double gain, size_t chan = 0){
         return this->set_rx_gain(gain, ALL_GAINS, chan);
     }
+
+    virtual void set_agc(bool agc, size_t chan = 0) = 0;
 
     /*!
      * Set the normalized RX gain value.

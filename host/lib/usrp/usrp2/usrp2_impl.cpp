@@ -689,6 +689,20 @@ usrp2_impl::usrp2_impl(const device_addr_t &_device_addr) :
         _tree->create<user_settings_core_200::user_reg_t>(mb_path / "user/regs")
             .subscribe(boost::bind(&user_settings_core_200::set_reg, _mbc[mb].user, _1));
 
+        switch(_mbc[mb].iface->get_rev()){
+        case usrp2_iface::USRP_N200:
+        case usrp2_iface::USRP_N210:
+        case usrp2_iface::USRP_N200_R4:
+        case usrp2_iface::USRP_N210_R4:
+            _tree->create<uint32_t>(mb_path / "csma/threshold")
+                .coerce(boost::bind(&usrp2_iface::set_csma_threshold, _mbc[mb].iface, _1))
+                .set(0);
+            _tree->create<uint32_t>(mb_path / "csma/slottime")
+                .coerce(boost::bind(&usrp2_iface::set_csma_slottime, _mbc[mb].iface, _1))
+                .set(0);
+        default: break; //otherwise, do not register
+        }
+
         ////////////////////////////////////////////////////////////////
         // create dboard control objects
         ////////////////////////////////////////////////////////////////

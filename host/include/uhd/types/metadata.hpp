@@ -156,6 +156,13 @@ namespace uhd{
         //! Set end of burst to true for the last packet in the chain.
         bool end_of_burst;
 
+        //! Set usage of Carrier Senes
+        bool use_cs;
+
+        //! Defines SIFS of CSMA/CA
+        boost::uint64_t sifs;
+        boost::uint64_t backoffs[2];
+
         /*!
          * The default constructor:
          * Sets the fields to default values (flags set to false).

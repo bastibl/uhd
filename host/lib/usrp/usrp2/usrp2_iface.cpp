@@ -63,6 +63,7 @@ static const boost::uint32_t MIN_PROTO_COMPAT_I2C = 7;
 // and the compatibility of the register mapping (more likely to change).
 static const boost::uint32_t MIN_PROTO_COMPAT_REG = 10;
 static const boost::uint32_t MIN_PROTO_COMPAT_UART = 7;
+static const boost::uint32_t MIN_PROTO_COMPAT_CSMA = 0;
 
 class usrp2_iface_impl : public usrp2_iface{
 public:
@@ -252,6 +253,49 @@ public:
         byte_vector_t result(num_bytes);
         std::copy(in_data.data.i2c_args.data, in_data.data.i2c_args.data + num_bytes, result.begin());
         return result;
+    }
+
+/***********************************************************************
+ * CSMA
+ **********************************************************************/
+
+    uint32_t set_csma_slottime(uint32_t slottime){
+        usrp2_ctrl_data_t out_data = usrp2_ctrl_data_t();
+        out_data.id = htonl(USRP2_CTRL_ID_SET_CSMA_PARAMETER);
+        out_data.data.csma_args.parameter = USRP2_CSMA_PARAMETER_SLOTTIME;
+        out_data.data.csma_args.parameter_value = htonl(slottime);
+
+        //send and recv
+        this->ctrl_send_and_recv(out_data, MIN_PROTO_COMPAT_CSMA);
+        //UHD_ASSERT_THROW(ntohl(in_data.id) == USRP2_CTRL_ID_GET_CSMA_PARAMETER);
+        //UHD_ASSERT_THROW(in_data.data.csma_args.parameter == USRP2_CSMA_PARAMETER_SLOTTIME);
+        return slottime;
+    }
+
+    uint32_t set_csma_threshold(uint32_t threshold){
+        usrp2_ctrl_data_t out_data = usrp2_ctrl_data_t();
+        out_data.id = htonl(USRP2_CTRL_ID_SET_CSMA_PARAMETER);
+        out_data.data.csma_args.parameter = USRP2_CSMA_PARAMETER_THRESHOLD;
+        out_data.data.csma_args.parameter_value = htonl(threshold);
+
+        //send and recv
+        this->ctrl_send_and_recv(out_data, MIN_PROTO_COMPAT_CSMA);
+        //UHD_ASSERT_THROW(ntohl(in_data.id) == USRP2_CTRL_ID_GET_CSMA_PARAMETER);
+        //UHD_ASSERT_THROW(in_data.data.csma_args.parameter == USRP2_CSMA_PARAMETER_THRESHOLD);
+        return threshold;
+    }
+
+    bool set_csma_enable(bool enable){
+        usrp2_ctrl_data_t out_data = usrp2_ctrl_data_t();
+        out_data.id = htonl(USRP2_CTRL_ID_SET_CSMA_PARAMETER);
+        out_data.data.csma_args.parameter = USRP2_CSMA_PARAMETER_ENABLE;
+        out_data.data.csma_args.parameter_value = htonl(enable);
+
+        //send and recv
+        this->ctrl_send_and_recv(out_data, MIN_PROTO_COMPAT_CSMA);
+        //UHD_ASSERT_THROW(ntohl(in_data.id) == USRP2_CTRL_ID_GET_CSMA_PARAMETER);
+        //UHD_ASSERT_THROW(in_data.data.csma_args.parameter == USRP2_CSMA_PARAMETER_ENABLE);
+        return enable;
     }
 
 /***********************************************************************

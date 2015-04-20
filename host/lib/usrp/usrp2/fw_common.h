@@ -54,6 +54,8 @@ typedef struct{
 #define USRP2_UDP_FIFO_CRTL_PORT 49159
 #define USRP2_UDP_UART_BASE_PORT 49170
 #define USRP2_UDP_UART_GPS_PORT 49172
+// Carrier Sense Ports
+#define USRP2_UDP_CSMA_PORT 49160
 
 // Map for virtual firmware regs (not very big so we can keep it here for now)
 #define U2_FW_REG_LOCK_TIME 0
@@ -79,6 +81,11 @@ typedef struct{
 #define USRP2_EE_MBOARD_IP_ADDR  0x0C //uint32, big-endian
 #define USRP2_EE_MBOARD_BOOTLOADER_FLAGS 0xF7
 
+////////////////////////////////////////////////////////////////////////
+// CSMA/CA Transport frame defs
+////////////////////////////////////////////////////////////////////////
+#define CSMA_PAYLOAD_LENGTH 255
+
 typedef enum{
     USRP2_CTRL_ID_HUH_WHAT = ' ',
     //USRP2_CTRL_ID_FOR_SURE, //TODO error condition enums
@@ -102,6 +109,9 @@ typedef enum{
     USRP2_CTRL_ID_HOLLER_AT_ME_BRO = 'l',
     USRP2_CTRL_ID_HOLLER_BACK_DUDE = 'L',
 
+    USRP2_CTRL_ID_SET_CSMA_PARAMETER = 'c',
+    USRP2_CTRL_ID_GET_CSMA_PARAMETER = 'C',
+
     USRP2_CTRL_ID_PEACE_OUT = '~'
 
 } usrp2_ctrl_id_t;
@@ -124,6 +134,12 @@ typedef enum{
     USRP2_REG_ACTION_FW_PEEK32   = 5,
     USRP2_REG_ACTION_FW_POKE32   = 6
 } usrp2_reg_action_t;
+
+typedef enum{
+    USRP2_CSMA_PARAMETER_ENABLE    = 1,
+    USRP2_CSMA_PARAMETER_SLOTTIME  = 2,
+    USRP2_CSMA_PARAMETER_THRESHOLD = 3
+} usrp2_csma_parameter_t;
 
 typedef struct{
     uint32_t proto_ver;
@@ -152,8 +168,76 @@ typedef struct{
         struct {
             uint32_t len;
         } echo_args;
+        struct {
+            uint8_t  parameter;
+            uint32_t parameter_value;
+        } csma_args;
     } data;
 } usrp2_ctrl_data_t;
+
+typedef struct {
+    uint8_t type;
+    uint8_t payload_len;
+    char payload[CSMA_PAYLOAD_LENGTH];
+} csma_frame_t;
+
+typedef enum {
+    GET_SETTINGS    = 0x00,
+    GET_BACKOFF     = 0x01,
+    GET_STATUS      = 0x02,
+    GET_READBACK    = 0x03,
+    GET_DUMMY       = 0x04,
+    GET_THRESHOLD   = 0x05,
+    GET_RSSI        = 0x06,
+
+    SET_SETTINGS    = 0x10,
+    SET_BACKOFF     = 0x11,
+    SET_DUMMY       = 0x12,
+    SET_READBACK    = 0x13,
+
+    TEXT_MESSAGE    = 0xFF
+} message_t;
+
+// a corresponding mapping is used in
+// readback_handler.vhd
+typedef enum {
+    BACKOFF0        = 0x01,
+    BACKOFF1        = 0x02,
+    BACKOFF2        = 0x03,
+    BACKOFF3        = 0x04,
+    BACKOFF4        = 0x05,
+    BACKOFF5        = 0x06,
+    SLOTTIME        = 0x07,
+    THRESHOLD       = 0x08,
+    DIFS            = 0x09,
+} cs_readback_data_t;
+
+typedef struct {
+    uint8_t  readback_addr;
+    uint16_t threshold;
+    uint32_t slottime;
+} csma_settings_t;
+
+typedef struct {
+    uint8_t  run;
+    uint8_t  error;
+    uint8_t  state;
+    uint8_t  ena;
+    uint8_t  free;
+    uint8_t  round;
+    uint8_t  ready;
+    uint8_t  reserved_4;
+    uint16_t reserved_16;
+} csma_state_t;
+
+typedef struct {
+    uint32_t bo_rnd0;
+    uint32_t bo_rnd1;
+    uint32_t bo_rnd2;
+    uint32_t bo_rnd3;
+    uint32_t bo_rnd4;
+    uint32_t bo_rnd5;
+} cs_backoff_t;
 
 #ifdef __cplusplus
 }

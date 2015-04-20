@@ -186,13 +186,26 @@ public:
         vrt::if_packet_info_t if_packet_info;
         if_packet_info.packet_type = vrt::if_packet_info_t::PACKET_TYPE_DATA;
         //if_packet_info.has_sid = false; //set per channel
-        if_packet_info.has_cid = false;
+        if_packet_info.has_cid = metadata.use_cs;
         if_packet_info.has_tlr = _has_tlr;
         if_packet_info.has_tsi = false;
         if_packet_info.has_tsf = metadata.has_time_spec;
         if_packet_info.tsf     = metadata.time_spec.to_ticks(_tick_rate);
         if_packet_info.sob     = metadata.start_of_burst;
         if_packet_info.eob     = metadata.end_of_burst;
+
+        if (if_packet_info.has_cid){
+            // this assembles a 64 bit value containing:
+            // 19 bit sifs, 10 + 9 + 8 + 7 + 6 + 5 bit backoff values
+            if(metadata.backoffs[0] > 31) throw std::invalid_argument("backoff too large");
+            if(metadata.backoffs[1] > 63) throw std::invalid_argument("backoff too large");
+            if(metadata.sifs > 0x7FFFF) throw std::invalid_argument("sifs is too big");
+
+            if_packet_info.cid = (
+                    metadata.backoffs[0] |
+                    metadata.backoffs[1] << 5 |
+                    metadata.sifs << (5 + 6+ 7 + 8 + 9 + 10));
+        }
 
         /*
          * Metadata is cached when we get a send requesting a start of burst with no samples.
