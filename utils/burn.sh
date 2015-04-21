@@ -1,9 +1,9 @@
 #!/bin/bash
 
 APP=~/usr/lib/uhd/utils/usrp_n2xx_net_burner.py
-ADDR="192.168.10.4"
-FPGA_DIR="/home/basti/src/uhd/fpga/usrp2/top/N2x0/build-N210R4"
-FW_DIR="/home/basti/src/uhd/firmware/zpu/build/usrp2p"
+ADDR="192.168.10.3"
+FPGA_DIR="/home/bloessl/src/uhd/fpga-src/usrp2/top/N2x0/build-N210R4"
+FW_DIR="/home/bloessl/src/uhd/firmware/usrp2/build/usrp2p"
 
 
 # rename FPGA image
