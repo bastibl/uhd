@@ -1,4 +1,4 @@
 [submodule "fpga-src"]
 	path = fpga-src
-	url = https://github.com/bastib/fpga.git
+	url = https://github.com/bastibl/fpga.git
 	branch = agc_and_csma
