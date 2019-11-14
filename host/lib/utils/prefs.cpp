@@ -73,7 +73,7 @@ config_parser& uhd::prefs::get_uhd_config()
     static bool init_done = false;
     if (not init_done) {
         UHD_LOG_TRACE("CONF", "Initializing config file object...");
-        const std::string sys_conf_file = path_expandvars(UHD_SYS_CONF_FILE);
+        const std::string sys_conf_file = UHD_SYS_CONF_FILE;
         _update_conf_file(sys_conf_file, "system", _conf_files);
         const std::string user_conf_file =
             (boost::filesystem::path(get_app_path())

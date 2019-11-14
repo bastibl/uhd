@@ -14,6 +14,7 @@
 #include <boost/shared_ptr.hpp>
 #include <string>
 #include <vector>
+#include <boost/tuple/tuple.hpp>
 
 namespace uhd { namespace transport {
 
@@ -33,7 +34,7 @@ class UHD_API usb_device_handle : uhd::noncopyable
 {
 public:
     typedef boost::shared_ptr<usb_device_handle> sptr;
-    typedef std::pair<uint16_t, uint16_t> vid_pid_pair_t;
+    typedef boost::tuple<uint16_t, uint16_t, boost::int32_t, std::string> vid_pid_pair_t;
 
     virtual ~usb_device_handle(void);
 
@@ -77,8 +78,8 @@ public:
      * Return a vector of USB devices on this host
      * \return a vector of USB device handles that match vid and pid
      */
-    static std::vector<usb_device_handle::sptr> get_device_list(
-        uint16_t vid, uint16_t pid);
+    virtual int get_fd() const = 0;
+    static std::vector<usb_device_handle::sptr> get_device_list(boost::uint16_t vid, boost::uint16_t pid, int fd, std::string usbfs_path);
     static std::vector<usb_device_handle::sptr> get_device_list(
         const std::vector<usb_device_handle::vid_pid_pair_t>& vid_pid_pair_list);
 

@@ -34,9 +34,15 @@ namespace uhd {
             &dwFileSysFlags, szFileSysName, sizeof(szFileSysName));
 
         return uint32_t(dwSerialNumber);
-#else
+#elif BSD_SOURCE || _XOPEN_SOURCE >= 500 || _XOPEN_SOURCE && _XOPEN_SOURCE_EXTENDED
         return uint32_t(gethostid());
+#else
+        return 0;
 #endif
+
+
+
+
     }
 
     uint32_t get_process_hash() {

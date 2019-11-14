@@ -487,14 +487,13 @@ endif(NOT CMAKE_MODULES_DIR)
 
 # UHDConfig.cmake needs UHD_LINK_LIST_STATIC set:
 list(APPEND UHD_LINK_LIST_STATIC "dl")
-list(APPEND UHD_LINK_LIST_STATIC "pthread")
 foreach(Boost_Comp ${BOOST_REQUIRED_COMPONENTS})
     if(NOT ${Boost_Comp} STREQUAL "unit_test_framework")
         list(APPEND UHD_LINK_LIST_STATIC "boost_${Boost_Comp}")
     endif(NOT ${Boost_Comp} STREQUAL "unit_test_framework")
 endforeach(Boost_Comp)
 if(ENABLE_USB)
-    list(APPEND UHD_LINK_LIST_STATIC "usb-1.0")
+    list(APPEND UHD_LINK_LIST_STATIC "usb1.0")
 endif(ENABLE_USB)
 # UHDConfig.cmake also needs UHD_RFNOC_FOUND
 if(ENABLE_RFNOC)

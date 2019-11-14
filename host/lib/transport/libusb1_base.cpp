@@ -130,9 +130,18 @@ public:
         return _dev;
     }
 
+    int get_fd() const {
+        return _fd;
+    }
+
+    void set_fd(int fd) {
+        _fd = fd;
+    }
+
 private:
     libusb::session::sptr _session; // always keep a reference to session
     libusb_device* _dev;
+    int _fd;
 };
 
 libusb_device_impl::~libusb_device_impl(void)
@@ -280,7 +289,7 @@ public:
     libusb_device_handle_impl(libusb::device::sptr dev)
     {
         _dev = dev;
-        UHD_ASSERT_THROW(libusb_open(_dev->get(), &_handle) == 0);
+        UHD_ASSERT_THROW(libusb_open2(_dev->get(), &_handle, _dev->get_fd()) == 0);
     }
 
     virtual ~libusb_device_handle_impl(void);
@@ -292,8 +301,6 @@ public:
 
     void claim_interface(int interface)
     {
-        UHD_ASSERT_THROW(libusb_claim_interface(this->get(), interface) == 0);
-        _claimed.push_back(interface);
     }
 
     void clear_endpoints(unsigned char recv_endpoint, unsigned char send_endpoint)
@@ -369,9 +376,10 @@ libusb::special_handle::~special_handle(void)
 class libusb_special_handle_impl : public libusb::special_handle
 {
 public:
-    libusb_special_handle_impl(libusb::device::sptr dev)
-    {
+
+    libusb_special_handle_impl(libusb::device::sptr dev, int fd){
         _dev = dev;
+        _dev->set_fd(fd);
     }
 
     virtual ~libusb_special_handle_impl(void);
@@ -379,6 +387,10 @@ public:
     libusb::device::sptr get_device(void) const
     {
         return _dev;
+    }
+
+    int get_fd() const {
+        return this->get_device()->get_fd();
     }
 
     std::string get_serial(void) const
@@ -425,9 +437,8 @@ libusb_special_handle_impl::~libusb_special_handle_impl(void)
     /* NOP */
 }
 
-libusb::special_handle::sptr libusb::special_handle::make(device::sptr dev)
-{
-    return sptr(new libusb_special_handle_impl(dev));
+libusb::special_handle::sptr libusb::special_handle::make(device::sptr dev, int fd){
+    return sptr(new libusb_special_handle_impl(dev, fd));
 }
 
 /***********************************************************************
@@ -439,27 +450,23 @@ usb_device_handle::~usb_device_handle(void)
 }
 
 std::vector<usb_device_handle::sptr> usb_device_handle::get_device_list(
-    uint16_t vid, uint16_t pid)
-{
-    return usb_device_handle::get_device_list(
-        std::vector<usb_device_handle::vid_pid_pair_t>(
-            1, usb_device_handle::vid_pid_pair_t(vid, pid)));
+    boost::uint16_t vid, boost::uint16_t pid, int fd, std::string usbfs_path
+){
+  return usb_device_handle::get_device_list(std::vector<usb_device_handle::vid_pid_pair_t>(1,usb_device_handle::vid_pid_pair_t(vid,pid,fd,usbfs_path)));
 }
 
-std::vector<usb_device_handle::sptr> usb_device_handle::get_device_list(
-    const std::vector<usb_device_handle::vid_pid_pair_t>& vid_pid_pair_list)
+std::vector<usb_device_handle::sptr> usb_device_handle::get_device_list(const std::vector<usb_device_handle::vid_pid_pair_t>& vid_pid_pair_list)
 {
     std::vector<usb_device_handle::sptr> handles;
     libusb::device_list::sptr dev_list = libusb::device_list::make();
-    for (size_t iter = 0; iter < vid_pid_pair_list.size(); ++iter) {
-        for (size_t i = 0; i < dev_list->size(); i++) {
-            usb_device_handle::sptr handle =
-                libusb::special_handle::make(dev_list->at(i));
-            if (handle->get_vendor_id() == vid_pid_pair_list[iter].first
-                and handle->get_product_id() == vid_pid_pair_list[iter].second) {
-                handles.push_back(handle);
-            }
-        }
+    for(size_t iter = 0; iter < vid_pid_pair_list.size(); ++iter)
+    {
+       for (size_t i = 0; i < dev_list->size(); i++){
+           usb_device_handle::sptr handle = libusb::special_handle::make(dev_list->at(i), vid_pid_pair_list[iter].get<2>());
+           if (handle->get_vendor_id() == vid_pid_pair_list[iter].get<0>() and handle->get_product_id() == vid_pid_pair_list[iter].get<1>()){
+               handles.push_back(handle);
+           }
+       }
     }
     return handles;
 }

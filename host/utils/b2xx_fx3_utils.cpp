@@ -167,10 +167,13 @@ uhd::transport::usb_device_handle::sptr open_device(
     uhd::transport::usb_device_handle::sptr handle;
     vid_pid_t vp = {vid, pid};
 
+    int fd = 0; // NEED TO GET THIS FROM THE APP
+    std::string usbfs_path = "/dev/bus/usb";
+
     try {
         // try caller's VID/PID first
-        std::vector<uhd::transport::usb_device_handle::vid_pid_pair_t> vid_pid_pair_list(
-            1, uhd::transport::usb_device_handle::vid_pid_pair_t(vid, pid));
+        std::vector<uhd::transport::usb_device_handle::vid_pid_pair_t> vid_pid_pair_list(1,uhd::transport::usb_device_handle::vid_pid_pair_t(vid,pid ,fd,usbfs_path));
+
         handles = uhd::transport::usb_device_handle::get_device_list(vid_pid_pair_list);
         if (handles.size() == 0) {
             if (user_supplied) {
@@ -186,7 +189,7 @@ uhd::transport::usb_device_handle::sptr open_device(
                  i++) {
                 vp = known_vid_pid_vector[i];
                 handles =
-                    uhd::transport::usb_device_handle::get_device_list(vp.vid, vp.pid);
+                    uhd::transport::usb_device_handle::get_device_list(vp.vid, vp.pid, fd, usbfs_path);
             }
         }
 

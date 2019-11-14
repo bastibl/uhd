@@ -46,7 +46,6 @@ CHECK_CXX_SOURCE_COMPILES("
 if(HAVE_PTHREAD_SETSCHEDPARAM)
     message(STATUS "  Priority scheduling supported through pthread_setschedparam.")
     list(APPEND THREAD_PRIO_DEFS HAVE_PTHREAD_SETSCHEDPARAM)
-    LIBUHD_APPEND_LIBS(pthread)
 elseif(HAVE_WIN_SETTHREADPRIORITY)
     message(STATUS "  Priority scheduling supported through windows SetThreadPriority.")
     set(THREAD_PRIO_DEFS HAVE_WIN_SETTHREADPRIORITY)
@@ -228,7 +227,7 @@ LIBUHD_APPEND_SOURCES(
     ${CMAKE_CURRENT_SOURCE_DIR}/load_modules.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/log.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/paths.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/pathslib.cpp
+    # ${CMAKE_CURRENT_SOURCE_DIR}/pathslib.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/platform.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/prefs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/static.cpp
