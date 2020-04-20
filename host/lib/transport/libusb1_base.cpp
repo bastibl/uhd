@@ -17,6 +17,15 @@
 #include <cstdlib>
 #include <iostream>
 
+#if ANDROID
+#include <android/log.h>
+#ifndef ALOG
+#define ALOG(x) __android_log_print(ANDROID_LOG_VERBOSE, "uhd::b200_impl", "%s", x);
+#endif
+#else
+#define ALOG(x)
+#endif
+
 using namespace uhd;
 using namespace uhd::transport;
 
@@ -34,7 +43,6 @@ public:
     libusb_session_impl(void)
     {
         UHD_ASSERT_THROW(libusb_init(&_context) == 0);
-        libusb_set_debug(_context, debug_level);
         task_handler = task::make(
             boost::bind(&libusb_session_impl::libusb_event_handler_task, this, _context));
     }
@@ -85,25 +93,16 @@ libusb_session_impl::~libusb_session_impl(void)
 
 libusb::session::sptr libusb::session::get_global_session(void)
 {
-    static boost::weak_ptr<session> global_session;
+    static libusb::session::sptr global_session;
 
     // not expired -> get existing session
-    if (not global_session.expired())
-        return global_session.lock();
+    if (global_session.get())
+        return global_session;
 
     // create a new global session
-    sptr new_global_session(new libusb_session_impl());
-    global_session = new_global_session;
+    global_session = libusb::session::sptr(new libusb_session_impl());
 
-    // set logging if envvar is set
-    const char* level_string = getenv("LIBUSB_DEBUG_LEVEL");
-    if (level_string != NULL) {
-        const int level = int(level_string[0] - '0'); // easy conversion to integer
-        if (level >= 0 and level <= 3)
-            libusb_set_debug(new_global_session->get_context(), level);
-    }
-
-    return new_global_session;
+    return global_session;
 }
 
 /***********************************************************************
@@ -217,8 +216,10 @@ class libusb_device_descriptor_impl : public libusb::device_descriptor
 public:
     libusb_device_descriptor_impl(libusb::device::sptr dev)
     {
+        ALOG("creating device descriptor");
         _dev = dev;
         UHD_ASSERT_THROW(libusb_get_device_descriptor(_dev->get(), &_desc) == 0);
+        ALOG("created device descriptor");
     }
 
     virtual ~libusb_device_descriptor_impl(void);
@@ -230,6 +231,7 @@ public:
 
     std::string get_ascii_property(const std::string& what) const
     {
+        ALOG(boost::str(boost::format("device descriptor getting ascii %1%") % what).c_str());
         uint8_t off = 0;
         if (what == "serial")
             off = this->get().iSerialNumber;
@@ -237,26 +239,38 @@ public:
             off = this->get().iProduct;
         if (what == "manufacturer")
             off = this->get().iManufacturer;
+
+        ALOG(boost::str(boost::format("device descriptor property offset %1%") % off).c_str());
         if (off == 0)
             return "";
+
+        ALOG(boost::str(boost::format("ascii off %1%") % off).c_str());
 
         libusb::device_handle::sptr handle(
             libusb::device_handle::get_cached_handle(_dev));
 
+        ALOG("got cached device handle");
+
         unsigned char buff[512];
         int ret = libusb_get_string_descriptor_ascii(
             handle->get(), off, buff, int(sizeof(buff)));
-        if (ret < 0)
+        if (ret < 0) {
+            ALOG("libusb get string failed");
             return ""; // on error, just return empty string
+        }
 
         std::string string_descriptor((char*)buff, size_t(ret));
         byte_vector_t string_vec(string_descriptor.begin(), string_descriptor.end());
         std::string out;
         for (uint8_t byte : string_vec) {
-            if (byte < 32 or byte > 127)
+            if (byte < 32 or byte > 127) {
+                ALOG(boost::str(boost::format("ascii returning %1%") % out).c_str());
                 return out;
+            }
             out += byte;
         }
+
+        ALOG(boost::str(boost::format("ascii returning %1%") % out).c_str());
         return out;
     }
 
@@ -289,7 +303,10 @@ public:
     libusb_device_handle_impl(libusb::device::sptr dev)
     {
         _dev = dev;
+
+        ALOG(boost::str(boost::format("open2-ing device. fd %1%") % _dev->get_fd()).c_str());
         UHD_ASSERT_THROW(libusb_open2(_dev->get(), &_handle, _dev->get_fd()) == 0);
+        ALOG("device handle created");
     }
 
     virtual ~libusb_device_handle_impl(void);
@@ -301,6 +318,10 @@ public:
 
     void claim_interface(int interface)
     {
+        int ret = libusb_claim_interface(this->get(), interface);
+        ALOG(boost::str(boost::format("libusb claim result %1%") % ret).c_str());
+        UHD_ASSERT_THROW(ret == 0);
+        _claimed.push_back(interface);
     }
 
     void clear_endpoints(unsigned char recv_endpoint, unsigned char send_endpoint)
@@ -458,15 +479,12 @@ std::vector<usb_device_handle::sptr> usb_device_handle::get_device_list(
 std::vector<usb_device_handle::sptr> usb_device_handle::get_device_list(const std::vector<usb_device_handle::vid_pid_pair_t>& vid_pid_pair_list)
 {
     std::vector<usb_device_handle::sptr> handles;
-    libusb::device_list::sptr dev_list = libusb::device_list::make();
     for(size_t iter = 0; iter < vid_pid_pair_list.size(); ++iter)
     {
-       for (size_t i = 0; i < dev_list->size(); i++){
-           usb_device_handle::sptr handle = libusb::special_handle::make(dev_list->at(i), vid_pid_pair_list[iter].get<2>());
-           if (handle->get_vendor_id() == vid_pid_pair_list[iter].get<0>() and handle->get_product_id() == vid_pid_pair_list[iter].get<1>()){
-               handles.push_back(handle);
-           }
-       }
+        libusb_device*  usb_device = libusb_get_device2(libusb::session::get_global_session()->get_context(), vid_pid_pair_list[iter].get<3>().c_str());
+        usb_device_handle::sptr handle = libusb::special_handle::make(libusb::device::sptr(new libusb_device_impl(usb_device)), vid_pid_pair_list[iter].get<2>());
+        handles.push_back(handle);
+        return handles;
     }
     return handles;
 }

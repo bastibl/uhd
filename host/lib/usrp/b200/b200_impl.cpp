@@ -32,7 +32,7 @@
 #if ANDROID
 #include <android/log.h>
 #ifndef ALOG
-#define ALOG(x) __android_log_print(ANDROID_LOG_VERBOSE, "uhd::b200_impl", x);
+#define ALOG(x) __android_log_print(ANDROID_LOG_VERBOSE, "uhd::b200_impl", "%s", x);
 #endif
 #else
 #define ALOG(x)
@@ -173,11 +173,14 @@ std::vector<usb_device_handle::sptr> get_b200_device_handles(const device_addr_t
     }
 
     //find the usrps and load firmware
+    ALOG(boost::str(boost::format("Searching B210 n entries: %1%") % vid_pid_pair_list.size()).c_str());
     return usb_device_handle::get_device_list(vid_pid_pair_list);
 }
 
 static device_addrs_t b200_find(const device_addr_t &hint)
 {
+
+    ALOG("in b200_find");
     device_addrs_t b200_addrs;
 
     //return an empty list of addresses when type is set to non-b200
@@ -191,6 +194,8 @@ static device_addrs_t b200_find(const device_addr_t &hint)
 
    if(!hint.has_key("fd") || !hint.has_key("usbfs_path")) return b200_addrs;
 
+    ALOG("b200_find: fd and usbfs_path in hints");
+
     // Important note:
     // The get device list calls are nested inside the for loop.
     // This allows the usb guts to decontruct when not in use,
@@ -199,9 +204,12 @@ static device_addrs_t b200_find(const device_addr_t &hint)
     size_t found = 0;
     for(usb_device_handle::sptr handle:  get_b200_device_handles(hint)) {
 
+        ALOG("b200_find: got device handle");
+
         //check if fw was already loaded
-        if (!(handle->firmware_loaded()))
+        if ((!hint.has_key("bbl")) && !((handle->firmware_loaded())))
         {
+            ALOG("b200_find: firmware not loaded");
             //extract the firmware path for the b200
             std::string b200_fw_image;
             try{
@@ -212,56 +220,68 @@ static device_addrs_t b200_find(const device_addr_t &hint)
                 UHD_LOG_INFO("b210", e.what());
                 return b200_addrs;
             }
+            ALOG(boost::str(boost::format("b200_find: fw image %1%") % b200_fw_image).c_str());
             UHD_LOG_INFO("b210", "the firmware image: " << b200_fw_image);
 
             usb_control::sptr control;
-            try{control = usb_control::make(handle, 0);}
+            try{
+                control = usb_control::make(handle, 0);
+                ALOG("got usb_control");
+            }
             catch(const uhd::exception &){continue;} //ignore claimed
 
+            ALOG("loading fw");
             b200_iface::make(control)->load_firmware(b200_fw_image);
+            ALOG("after loading fw");
+
+            return b200_addrs;
         }
 
         found++;
     }
 
-    const auto timeout_time =
-        std::chrono::steady_clock::now()
-        + std::chrono::milliseconds(REENUMERATION_TIMEOUT_MS);
-    //search for the device until found or timeout
-    while (std::chrono::steady_clock::now() < timeout_time
-            and b200_addrs.empty()
-            and found != 0) {
-        for(usb_device_handle::sptr handle:  get_b200_device_handles(hint)) {
-            usb_control::sptr control;
-            try{control = usb_control::make(handle, 0);}
-            catch(const uhd::exception &){continue;} //ignore claimed
-
-            b200_iface::sptr iface = b200_iface::make(control);
-            const mboard_eeprom_t mb_eeprom = b200_impl::get_mb_eeprom(iface);
-
-            device_addr_t new_addr;
-            new_addr["type"] = "b200";
-            new_addr["name"] = mb_eeprom["name"];
-            new_addr["serial"] = handle->get_serial();
-            try {
-                // Turn the 16-Bit product ID into a string representation
-                new_addr["product"] = B2XX_STR_NAMES[get_b200_product(handle, mb_eeprom)];
-            } catch (const uhd::runtime_error &) {
-                // No problem if this fails -- this is just device discovery, after all.
-                new_addr["product"] = "B2??";
-            }
-
-            //this is a found b200 when the hint serial and name match or blank
-            if (
-                (not hint.has_key("name")   or hint["name"]   == new_addr["name"]) and
-                (not hint.has_key("serial") or hint["serial"] == new_addr["serial"])
-            ){
-                b200_addrs.push_back(new_addr);
-            }
-        }
-    }
-
+    device_addr_t addr = hint;
+    b200_addrs.push_back(addr);
     return b200_addrs;
+
+    // const auto timeout_time =
+    //     std::chrono::steady_clock::now()
+    //     + std::chrono::milliseconds(REENUMERATION_TIMEOUT_MS);
+    // //search for the device until found or timeout
+    // while (std::chrono::steady_clock::now() < timeout_time
+    //         and b200_addrs.empty()
+    //         and found != 0) {
+    //     for(usb_device_handle::sptr handle:  get_b200_device_handles(hint)) {
+    //         usb_control::sptr control;
+    //         try{control = usb_control::make(handle, 0);}
+    //         catch(const uhd::exception &){continue;} //ignore claimed
+
+    //         b200_iface::sptr iface = b200_iface::make(control);
+    //         const mboard_eeprom_t mb_eeprom = b200_impl::get_mb_eeprom(iface);
+
+    //         device_addr_t new_addr;
+    //         new_addr["type"] = "b200";
+    //         new_addr["name"] = mb_eeprom["name"];
+    //         new_addr["serial"] = handle->get_serial();
+    //         try {
+    //             // Turn the 16-Bit product ID into a string representation
+    //             new_addr["product"] = B2XX_STR_NAMES[get_b200_product(handle, mb_eeprom)];
+    //         } catch (const uhd::runtime_error &) {
+    //             // No problem if this fails -- this is just device discovery, after all.
+    //             new_addr["product"] = "B2??";
+    //         }
+
+    //         //this is a found b200 when the hint serial and name match or blank
+    //         if (
+    //             (not hint.has_key("name")   or hint["name"]   == new_addr["name"]) and
+    //             (not hint.has_key("serial") or hint["serial"] == new_addr["serial"])
+    //         ){
+    //             b200_addrs.push_back(new_addr);
+    //         }
+    //     }
+    // }
+
+    // return b200_addrs;
 }
 
 /***********************************************************************
@@ -274,19 +294,6 @@ static device::sptr b200_make(const device_addr_t &device_addr)
     // We try twice, because the first time, the link might be in a bad state
     // and we might need to reset the link, but if that didn't help, trying
     // a third time is pointless.
-    try {
-        return device::sptr(new b200_impl(device_addr, handle));
-    }
-    catch (const uhd::usb_error &) {
-        UHD_LOGGER_INFO("B200") << "Detected bad USB state; resetting." ;
-        libusb::device_handle::sptr dev_handle(libusb::device_handle::get_cached_handle(
-            boost::static_pointer_cast<libusb::special_handle>(handle)->get_device()
-        ));
-        dev_handle->clear_endpoints(B200_USB_CTRL_RECV_ENDPOINT, B200_USB_CTRL_SEND_ENDPOINT);
-        dev_handle->clear_endpoints(B200_USB_DATA_RECV_ENDPOINT, B200_USB_DATA_SEND_ENDPOINT);
-        dev_handle->reset_device();
-    }
-
     return device::sptr(new b200_impl(device_addr, handle));
 }
 
@@ -385,14 +392,15 @@ b200_impl::b200_impl(const uhd::device_addr_t& device_addr, usb_device_handle::s
 
     //locate the matching handle in the device list
     ALOG("Locate matching handle in device list");
-    for(usb_device_handle::sptr dev_handle:  device_list) {
-        try {
-            if (dev_handle->get_serial() == device_addr["serial"]){
-                handle = dev_handle;
-                break;
-            }
-        } catch (const uhd::exception&) { continue; }
-    }
+    // for(usb_device_handle::sptr dev_handle:  device_list) {
+    //     try {
+    //         if (dev_handle->get_serial() == device_addr["serial"]){
+    //             handle = dev_handle;
+    //             break;
+    //         }
+    //     } catch (const uhd::exception&) { continue; }
+    // }
+    handle = device_list[0];
     UHD_ASSERT_THROW(handle.get() != NULL); //better be found
 
     //create control objects
@@ -401,17 +409,17 @@ b200_impl::b200_impl(const uhd::device_addr_t& device_addr, usb_device_handle::s
     ALOG("Make B2xx interface");
     _iface = b200_iface::make(control);
 
-    ////////////////////////////////////////////////////////////////////
-    // load the device firmware
-    ////////////////////////////////////////////////////////////////////
-    ALOG("Loading B2xx Firmware");
-    std::string b200_fw_image = B200_FW_FILE_NAME;
-    if(!(handle->firmware_loaded())) {
-      ALOG("Loading Firmware");
-      _iface->load_firmware(b200_fw_image);
-      ALOG("    ... loaded");
-    }
-    ALOG("Firmware loaded; compat check");
+    // ////////////////////////////////////////////////////////////////////
+    // // load the device firmware
+    // ////////////////////////////////////////////////////////////////////
+    // ALOG("Loading B2xx Firmware");
+    // std::string b200_fw_image = B200_FW_FILE_NAME;
+    // if(!(handle->firmware_loaded())) {
+    //   ALOG("Loading Firmware");
+    //   _iface->load_firmware(b200_fw_image);
+    //   ALOG("    ... loaded");
+    // }
+    // ALOG("Firmware loaded; compat check");
 
     this->check_fw_compat(); //check after making
 
@@ -500,6 +508,7 @@ b200_impl::b200_impl(const uhd::device_addr_t& device_addr, usb_device_handle::s
     ////////////////////////////////////////////////////////////////////
     uint8_t usb_speed = _iface->get_usb_speed();
     UHD_LOGGER_INFO("B200") << "Operating over USB " << (int) usb_speed << "." ;
+    ALOG(boost::str(boost::format("Operating over USB %1%") % (int) usb_speed).c_str());
     const std::string min_frame_size = (usb_speed == 3) ? "1024" : "512";
 
     device_addr_t ctrl_xport_args;

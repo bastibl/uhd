@@ -28,7 +28,7 @@
 
 #if ANDROID
 #include <android/log.h>
-#define ALOG(x) __android_log_print(ANDROID_LOG_VERBOSE, "uhd::b200_iface", x);
+#define ALOG(x) __android_log_print(ANDROID_LOG_VERBOSE, "uhd::b200_iface", "%s", x);
 #else
 #define ALOG(x)
 #endif
@@ -326,6 +326,7 @@ public:
         const int bytes_to_recv = sizeof(rx_data);
 
         int ret = fx3_control_read(B200_VREQ_GET_COMPAT , 0x00, 0x00, rx_data, bytes_to_recv);
+        ALOG(boost::str(boost::format("control read returned %1%") % ret).c_str());
         if (ret < 0)
             throw uhd::io_error((boost::format("Failed to get compat num (%d: %s)") % ret % libusb_error_name(ret)).str());
         else if (ret != bytes_to_recv)
@@ -427,14 +428,13 @@ public:
         // Request loopback read, which will indicate the firmware's current control request buffer size
         int nread = fx3_control_read(B200_VREQ_LOOP, 0, 0, out_buff, transfer_size, 1000);
         if (nread < 0) {
-            ALOG(boost::str
-                 (boost::format("load_fpga: unable to complete firmware loopback request (%d: %s)") \
-                 % nread % libusb_error_name(nread)).c_str());
+            ALOG(boost::str(boost::format("load_fpga: unable to complete firmware loopback request (%d: %s)") \
+                           % nread % libusb_error_name(nread)).c_str());
             throw uhd::io_error((boost::format("load_fpga: unable to complete firmware loopback request (%d: %s)") % nread % libusb_error_name(nread)).str());
         } else if (nread != transfer_size) {
             ALOG(boost::str
                  (boost::format("load_fpga: short read on firmware loopback request (expecting: %d, returned: %d)") \
-                  % ntoread % nread).c_str());
+                  % transfer_size % nread).c_str());
             throw uhd::io_error((boost::format("load_fpga: short read on firmware loopback request (expecting: %d, returned: %d)") % transfer_size % nread).str());
         }
 

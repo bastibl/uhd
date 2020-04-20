@@ -80,8 +80,7 @@ public:
      */
     virtual int get_fd() const = 0;
     static std::vector<usb_device_handle::sptr> get_device_list(boost::uint16_t vid, boost::uint16_t pid, int fd, std::string usbfs_path);
-    static std::vector<usb_device_handle::sptr> get_device_list(
-        const std::vector<usb_device_handle::vid_pid_pair_t>& vid_pid_pair_list);
+    static std::vector<usb_device_handle::sptr> get_device_list(const std::vector<usb_device_handle::vid_pid_pair_t>& vid_pid_pair_list);
 
 
 }; // namespace usb
